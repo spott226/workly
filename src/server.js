@@ -12,7 +12,9 @@ const app = require('./app');
    CONFIG
 ========================= */
 
-const PORT = Number(process.env.PORT) || 8080;
+// 🚨 Railway SIEMPRE define PORT
+// ❌ NO fallback
+const PORT = process.env.PORT;
 const HOST = '0.0.0.0';
 
 /* =========================
@@ -29,7 +31,7 @@ app.get('/', (_req, res) => {
 ========================= */
 
 const server = app.listen(PORT, HOST, () => {
-  console.log(`🚀 SaaS Citas running on ${HOST}:${PORT}`);
+  console.log(`🚀 SaaS Citas running on ${PORT}`);
 });
 
 /* =========================
@@ -37,14 +39,14 @@ const server = app.listen(PORT, HOST, () => {
 ========================= */
 
 const shutdown = (signal) => {
-  console.log(`⚠️  ${signal} received. Closing server...`);
+  console.log(`⚠️ ${signal} received. Shutting down...`);
 
   server.close(() => {
     console.log('✅ Server closed gracefully');
     process.exit(0);
   });
 
-  // Hard kill si algo se queda colgado
+  // Kill forzado si algo se queda colgado
   setTimeout(() => {
     console.error('❌ Force shutdown');
     process.exit(1);

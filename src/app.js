@@ -1,3 +1,7 @@
+app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});
+
 const express = require('express');
 const cors = require('cors');
 

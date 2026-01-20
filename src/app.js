@@ -1,7 +1,3 @@
-app.get('/', (req, res) => {
-  res.status(200).send('OK');
-});
-
 const express = require('express');
 const cors = require('cors');
 
@@ -37,7 +33,7 @@ app.use('/auth', require('./modules/auth/auth.routes'));
 // 🔥 PERFIL PÚBLICO DEL NEGOCIO
 app.use('/public/business', require('./modules/businesses/public.routes'));
 
-// 🔥 DISPONIBILIDAD Y CITA PÚBLICA (CRÍTICO)
+// 🔥 DISPONIBILIDAD Y CITA PÚBLICA
 app.use(
   '/api/appointments',
   require('./modules/appointments/appointments.routes')
@@ -95,7 +91,3 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
-
-app.get('/', (req, res) => {
-  res.status(200).send('OK');
-});

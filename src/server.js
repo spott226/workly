@@ -1,22 +1,55 @@
+/**
+ * ============================================
+ * Server bootstrap
+ * Compatible con Railway / Docker / Local
+ * ============================================
+ */
+
 require('dotenv').config();
 const app = require('./app');
 
-const PORT = process.env.PORT || 8080;
+/* =========================
+   CONFIG
+========================= */
 
-// 🔥 ENDPOINT DE VIDA PARA RAILWAY
-app.get('/', (req, res) => {
+const PORT = Number(process.env.PORT) || 8080;
+const HOST = '0.0.0.0';
+
+/* =========================
+   HEALTH CHECK
+   (Railway / Load Balancer)
+========================= */
+
+app.get('/', (_req, res) => {
   res.status(200).send('OK');
 });
 
-const server = app.listen(PORT, '0.0.0.0', () => {
-  console.log(`SaaS Citas running on port ${PORT}`);
+/* =========================
+   START SERVER
+========================= */
+
+const server = app.listen(PORT, HOST, () => {
+  console.log(`🚀 SaaS Citas running on ${HOST}:${PORT}`);
 });
 
-// 🔒 MANEJO LIMPIO DE SIGTERM
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
+/* =========================
+   GRACEFUL SHUTDOWN
+========================= */
+
+const shutdown = (signal) => {
+  console.log(`⚠️  ${signal} received. Closing server...`);
+
   server.close(() => {
-    console.log('Server closed');
+    console.log('✅ Server closed gracefully');
     process.exit(0);
   });
-});
+
+  // Hard kill si algo se queda colgado
+  setTimeout(() => {
+    console.error('❌ Force shutdown');
+    process.exit(1);
+  }, 10_000);
+};
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT', shutdown);

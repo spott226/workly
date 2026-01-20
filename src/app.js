@@ -7,19 +7,30 @@ const app = express();
    CORS (CRÍTICO)
 ========================= */
 
+const allowedOrigins = [
+  'http://localhost:3001', // front local
+  'https://workly-production-6f53.up.railway.app', // back prod (por si acaso)
+];
+
 app.use(
   cors({
-    origin: [
-      'http://localhost:3001',
-      'https://workly-production-6f53.up.railway.app',
-    ],
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    origin: function (origin, callback) {
+      // permitir requests sin origin (Postman, curl, Railway healthcheck)
+      if (!origin) return callback(null, true);
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error('Not allowed by CORS'));
+    },
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   })
 );
 
-// Preflight requests
+// Preflight (IMPORTANTE para navegador)
 app.options('*', cors());
 
 /* =========================

@@ -9,7 +9,7 @@ const app = express();
 
 const allowedOrigins = [
   'http://localhost:3001',
-  'https://workly-production-6f53.up.railway.app',
+  'https://workly-front.vercel.app', // 👈 ESTE FALTABA
 ];
 
 app.use(

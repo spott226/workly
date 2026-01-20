@@ -91,3 +91,7 @@ app.use((err, req, res, next) => {
 });
 
 module.exports = app;
+
+app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});

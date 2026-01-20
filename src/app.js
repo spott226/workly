@@ -9,11 +9,19 @@ const app = express();
 
 app.use(
   cors({
-    origin: 'http://localhost:3001',
+    origin: 'http://localhost:3001', // en prod luego lo cambias
   })
 );
 
 app.use(express.json());
+
+/* =========================
+   HEALTHCHECK (CRÍTICO RAILWAY)
+========================= */
+
+app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});
 
 /* =========================
    RUTAS PÚBLICAS

@@ -4,19 +4,32 @@ const cors = require('cors');
 const app = express();
 
 /* =========================
-   MIDDLEWARES BASE
+   CORS (CRÍTICO)
 ========================= */
 
 app.use(
   cors({
-    origin: 'http://localhost:3001', // en prod luego lo cambias
+    origin: [
+      'http://localhost:3001',
+      'https://workly-production-6f53.up.railway.app',
+    ],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept'],
+    credentials: true,
   })
 );
+
+// Preflight requests
+app.options('*', cors());
+
+/* =========================
+   BODY PARSER
+========================= */
 
 app.use(express.json());
 
 /* =========================
-   HEALTHCHECK (CRÍTICO RAILWAY)
+   HEALTHCHECK (RAILWAY)
 ========================= */
 
 app.get('/', (req, res) => {
@@ -30,10 +43,10 @@ app.get('/', (req, res) => {
 
 app.use('/auth', require('./modules/auth/auth.routes'));
 
-// 🔥 PERFIL PÚBLICO DEL NEGOCIO
+// Perfil público del negocio
 app.use('/public/business', require('./modules/businesses/public.routes'));
 
-// 🔥 DISPONIBILIDAD Y CITA PÚBLICA
+// Disponibilidad y creación de cita pública
 app.use(
   '/api/appointments',
   require('./modules/appointments/appointments.routes')
@@ -55,7 +68,10 @@ const businessMiddleware = require('./middlewares/business.middleware');
 const staffOnlyAppointmentsMiddleware =
   require('./middlewares/staff-only-appointments.middleware');
 
-// ⛔ TODO LO QUE SIGUE ES PRIVADO
+// ⛔ TODO lo que sigue requiere:
+// - JWT válido
+// - staff activo
+// - business activo
 app.use(staffMiddleware);
 app.use(businessMiddleware);
 app.use(staffOnlyAppointmentsMiddleware);
@@ -79,12 +95,13 @@ app.use(
 );
 
 /* =========================
-   ERRORES
+   MANEJO DE ERRORES
 ========================= */
 
 app.use(require('./middlewares/error.middleware'));
 
 app.use((err, req, res, next) => {
+  console.error(err);
   res.status(err.status || 500).json({
     message: err.message || 'Server error',
   });

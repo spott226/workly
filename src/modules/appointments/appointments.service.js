@@ -5,6 +5,7 @@ const { logStaffAction } = require('../../utils/staffLogger');
 /* ===========================
    Helpers
 =========================== */
+
 const upsertClientOnAttend = async (appointment) => {
   const { business_id, client_name, phone, starts_at } = appointment;
   const phoneNormalized = phone.replace(/\D/g, '');
@@ -38,9 +39,11 @@ const upsertClientOnAttend = async (appointment) => {
       `,
       [business_id, client_name, phone, phoneNormalized, starts_at]
     );
+
     clientId = created.rows[0].id;
   } else {
     clientId = rows[0].id;
+
     await pool.query(
       `
       UPDATE clients
@@ -60,7 +63,11 @@ const assertBusinessCanOperate = (business) => {
   if (business.active !== true) throw new Error('SUBSCRIPTION_INACTIVE');
 };
 
-const assertEmployeeCanDoService = async (businessId, employeeId, serviceId) => {
+const assertEmployeeCanDoService = async (
+  businessId,
+  employeeId,
+  serviceId
+) => {
   const { rows } = await pool.query(
     `
     SELECT 1
@@ -76,27 +83,33 @@ const assertEmployeeCanDoService = async (businessId, employeeId, serviceId) => 
     [employeeId, businessId, serviceId]
   );
 
-  if (!rows.length) throw new Error('EMPLOYEE_NOT_ALLOWED_FOR_SERVICE');
+  if (!rows.length) {
+    throw new Error('EMPLOYEE_NOT_ALLOWED_FOR_SERVICE');
+  }
 };
 
 /* ===========================
    Availability — ARRAY PLANO
 =========================== */
-const getAvailableEmployees = async (businessId, serviceId, startISO) => {
-  // 🔒 VALIDAR que el servicio pertenezca al business
+
+const getAvailableEmployees = async (
+  businessId,
+  serviceId,
+  startISO
+) => {
   const svc = await pool.query(
     `
-    SELECT duration_minutes
-FROM services
-WHERE id = $1
-  AND is_active = true
-
+    SELECT duration_minutes, business_id
+    FROM services
+    WHERE id = $1
+      AND is_active = true
     `,
-    [serviceId, businessId]
+    [serviceId]
   );
 
   if (!svc.rows.length) return [];
 
+  const realBusinessId = svc.rows[0].business_id;
   const duration = svc.rows[0].duration_minutes;
 
   const start = DateTime.fromISO(startISO, { zone: 'utc' });
@@ -110,7 +123,7 @@ WHERE id = $1
     FROM businesses
     WHERE id = $1
     `,
-    [businessId]
+    [realBusinessId]
   );
 
   if (!biz.length) return [];
@@ -146,7 +159,12 @@ WHERE id = $1
       AND es.active = true
       AND a.id IS NULL
     `,
-    [businessId, start.toISO(), end.toISO(), serviceId]
+    [
+      realBusinessId,
+      start.toISO(),
+      end.toISO(),
+      serviceId,
+    ]
   );
 
   return res.rows.map((e) => ({
@@ -155,12 +173,22 @@ WHERE id = $1
   }));
 };
 
-
 /* ===========================
    Create Appointment
 =========================== */
-const createAppointment = async (businessId, payload, auth = null) => {
-  const { serviceId, employeeId, startISO, clientName, phone } = payload;
+
+const createAppointment = async (
+  businessId,
+  payload,
+  auth = null
+) => {
+  const {
+    serviceId,
+    employeeId,
+    startISO,
+    clientName,
+    phone,
+  } = payload;
 
   if (!clientName || !phone) {
     throw new Error('CLIENT_DATA_REQUIRED');
@@ -172,7 +200,11 @@ const createAppointment = async (businessId, payload, auth = null) => {
   );
 
   assertBusinessCanOperate(biz[0]);
-  await assertEmployeeCanDoService(businessId, employeeId, serviceId);
+  await assertEmployeeCanDoService(
+    businessId,
+    employeeId,
+    serviceId
+  );
 
   const employees = await getAvailableEmployees(
     businessId,
@@ -189,7 +221,6 @@ const createAppointment = async (businessId, payload, auth = null) => {
     [serviceId]
   );
 
-  // ✅ startISO YA VIENE EN UTC → NO reinterpretar
   const start = DateTime.fromISO(startISO, { zone: 'utc' });
   if (!start.isValid) {
     throw new Error('INVALID_START_DATE');
@@ -221,8 +252,8 @@ const createAppointment = async (businessId, payload, auth = null) => {
       employeeId,
       clientName,
       phone,
-      start.toISO(),   // 🔒 ya es UTC
-      end.toISO(),     // 🔒 ya es UTC
+      start.toISO(),
+      end.toISO(),
       auth?.userId || null,
     ]
   );
@@ -245,6 +276,7 @@ const createAppointment = async (businessId, payload, auth = null) => {
 /* ===========================
    List / Update / Public
 =========================== */
+
 const listAppointments = async (businessId) => {
   const { rows } = await pool.query(
     `
@@ -290,7 +322,6 @@ const confirmAppointment = async (
     throw new Error('APPOINTMENT_NOT_FOUND');
   }
 
-  // 🔥 LOG DEL MOVIMIENTO
   await pool.query(
     `
     INSERT INTO staff_activity_logs (
@@ -311,7 +342,11 @@ const confirmAppointment = async (
   );
 };
 
-const cancelAppointment = async (businessId, appointmentId, actorUserId) => {
+const cancelAppointment = async (
+  businessId,
+  appointmentId,
+  actorUserId
+) => {
   const { rows } = await pool.query(
     `
     UPDATE appointments
@@ -326,7 +361,6 @@ const cancelAppointment = async (businessId, appointmentId, actorUserId) => {
     throw new Error('APPOINTMENT_NOT_FOUND');
   }
 
-  // 🔥 LOG DEL MOVIMIENTO DEL STAFF
   await pool.query(
     `
     INSERT INTO staff_activity_logs (
@@ -356,15 +390,8 @@ const markAsAttended = async (
     `
     UPDATE appointments
     SET status = 'ATTENDED'
-    WHERE id = $1
-      AND business_id = $2
-    RETURNING
-      id,
-      business_id,
-      client_name,
-      phone,
-      starts_at,
-      employee_id
+    WHERE id = $1 AND business_id = $2
+    RETURNING id, business_id, client_name, phone, starts_at, employee_id
     `,
     [appointmentId, businessId]
   );
@@ -373,7 +400,6 @@ const markAsAttended = async (
     throw new Error('APPOINTMENT_NOT_FOUND');
   }
 
-  // 🔁 CLIENTE (YA EXISTE)
   const clientId = await upsertClientOnAttend(rows[0]);
 
   await pool.query(
@@ -385,7 +411,6 @@ const markAsAttended = async (
     [clientId, appointmentId]
   );
 
-  // 🔥 LOG STAFF
   await pool.query(
     `
     INSERT INTO staff_activity_logs (
@@ -415,13 +440,8 @@ const markAsNoShow = async (
     `
     UPDATE appointments
     SET status = 'NO_SHOW'
-    WHERE id = $1
-      AND business_id = $2
-    RETURNING
-      id,
-      business_id,
-      phone,
-      employee_id
+    WHERE id = $1 AND business_id = $2
+    RETURNING id, business_id, phone, employee_id
     `,
     [appointmentId, businessId]
   );
@@ -430,7 +450,6 @@ const markAsNoShow = async (
     throw new Error('APPOINTMENT_NOT_FOUND');
   }
 
-  // 🔁 CONTADOR DE NO SHOW DEL CLIENTE (YA EXISTE)
   await pool.query(
     `
     UPDATE clients
@@ -441,7 +460,6 @@ const markAsNoShow = async (
     [rows[0].business_id, rows[0].phone]
   );
 
-  // 🔥 LOG STAFF
   await pool.query(
     `
     INSERT INTO staff_activity_logs (
@@ -470,14 +488,10 @@ const rescheduleAppointment = async (
 ) => {
   const { rows } = await pool.query(
     `
-    SELECT
-      a.id,
-      a.employee_id,
-      s.duration_minutes
+    SELECT a.id, a.employee_id, s.duration_minutes
     FROM appointments a
     JOIN services s ON s.id = a.service_id
-    WHERE a.id = $1
-      AND a.business_id = $2
+    WHERE a.id = $1 AND a.business_id = $2
     `,
     [appointmentId, businessId]
   );
@@ -498,12 +512,10 @@ const rescheduleAppointment = async (
   await pool.query(
     `
     UPDATE appointments
-    SET
-      starts_at = $1,
-      ends_at   = $2,
-      status    = 'CONFIRMED'
-    WHERE id = $3
-      AND business_id = $4
+    SET starts_at = $1,
+        ends_at   = $2,
+        status    = 'CONFIRMED'
+    WHERE id = $3 AND business_id = $4
     `,
     [
       start.toISO(),
@@ -535,7 +547,10 @@ const rescheduleAppointment = async (
   return { ok: true };
 };
 
-const markReviewAsSent = async (businessId, appointmentId) => {
+const markReviewAsSent = async (
+  businessId,
+  appointmentId
+) => {
   await pool.query(
     `
     UPDATE appointments
@@ -549,7 +564,7 @@ const markReviewAsSent = async (businessId, appointmentId) => {
 };
 
 const createPublicAppointment = async (payload) => {
-  const { slug, serviceId } = payload;
+  const { slug } = payload;
 
   const { rows: biz } = await pool.query(
     `
@@ -561,7 +576,6 @@ const createPublicAppointment = async (payload) => {
   );
 
   assertBusinessCanOperate(biz[0]);
-
   return createAppointment(biz[0].id, payload);
 };
 

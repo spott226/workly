@@ -83,19 +83,20 @@ const assertEmployeeCanDoService = async (businessId, employeeId, serviceId) => 
    Availability — ARRAY PLANO
 =========================== */
 const getAvailableEmployees = async (businessId, serviceId, startISO) => {
+  // 🔒 VALIDAR que el servicio pertenezca al business
   const svc = await pool.query(
     `
-    SELECT duration_minutes, business_id
+    SELECT duration_minutes
     FROM services
     WHERE id = $1
+      AND business_id = $2
       AND is_active = true
     `,
-    [serviceId]
+    [serviceId, businessId]
   );
 
   if (!svc.rows.length) return [];
 
-  const realBusinessId = svc.rows[0].business_id;
   const duration = svc.rows[0].duration_minutes;
 
   const start = DateTime.fromISO(startISO, { zone: 'utc' });
@@ -109,7 +110,7 @@ const getAvailableEmployees = async (businessId, serviceId, startISO) => {
     FROM businesses
     WHERE id = $1
     `,
-    [realBusinessId]
+    [businessId]
   );
 
   if (!biz.length) return [];
@@ -125,11 +126,9 @@ const getAvailableEmployees = async (businessId, serviceId, startISO) => {
   const closing = DateTime.fromISO(
     `${startMX.toISODate()}T${biz[0].closing_time}`,
     { zone: 'America/Mexico_City' }
-  ).endOf('minute');
+  );
 
-  if (startMX < opening || endMX > closing) {
-    return [];
-  }
+  if (startMX < opening || endMX > closing) return [];
 
   const res = await pool.query(
     `
@@ -147,12 +146,7 @@ const getAvailableEmployees = async (businessId, serviceId, startISO) => {
       AND es.active = true
       AND a.id IS NULL
     `,
-    [
-      realBusinessId,
-      start.toISO(),
-      end.toISO(),
-      serviceId,
-    ]
+    [businessId, start.toISO(), end.toISO(), serviceId]
   );
 
   return res.rows.map((e) => ({

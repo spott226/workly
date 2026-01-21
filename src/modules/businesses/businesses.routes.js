@@ -91,4 +91,38 @@ router.put('/me/hours', async (req, res) => {
   res.json(data);
 });
 
+/* =========================================================
+   CONFIGURACIÓN PÚBLICA (LANDING)
+   👉 título, descripción, CTA, estilo, tipografía
+========================================================= */
+router.put('/public-config', async (req, res) => {
+  try {
+    const {
+      public_title,
+      public_description,
+      cta_text,
+      theme_variant,
+      font_variant,
+    } = req.body;
+
+    const data = await service.updatePublicConfig(
+      req.auth.businessId,
+      {
+        public_title,
+        public_description,
+        cta_text,
+        theme_variant,
+        font_variant,
+      }
+    );
+
+    res.json(data);
+  } catch (error) {
+    console.error('Error guardando public config:', error);
+    res.status(500).json({
+      message: 'Error al guardar configuración pública',
+    });
+  }
+});
+
 module.exports = router;

@@ -242,6 +242,45 @@ const updateEmployeeSchedule = async (
   return res.rows[0];
 };
 
+async function updatePublicConfig(businessId, config) {
+  const {
+    public_title,
+    public_description,
+    cta_text,
+    theme_variant,
+    font_variant,
+  } = config;
+
+  const { rows } = await pool.query(
+    `
+    UPDATE businesses
+    SET
+      public_title = $1,
+      public_description = $2,
+      cta_text = $3,
+      theme_variant = $4,
+      font_variant = $5
+    WHERE id = $6
+    RETURNING
+      public_title,
+      public_description,
+      cta_text,
+      theme_variant,
+      font_variant
+    `,
+    [
+      public_title,
+      public_description,
+      cta_text,
+      theme_variant,
+      font_variant,
+      businessId,
+    ]
+  );
+
+  return rows[0];
+}
+
 module.exports = {
   getBusinessProfile,
   updateBusinessProfile,
@@ -250,4 +289,5 @@ module.exports = {
   getBusinessHours,
   updateBusinessHours,
   updateEmployeeSchedule,
+  updatePublicConfig,
 };

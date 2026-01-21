@@ -87,10 +87,10 @@ const getAvailableEmployees = async (businessId, serviceId, startISO) => {
   const svc = await pool.query(
     `
     SELECT duration_minutes
-    FROM services
-    WHERE id = $1
-      AND business_id = $2
-      AND is_active = true
+FROM services
+WHERE id = $1
+  AND is_active = true
+
     `,
     [serviceId, businessId]
   );

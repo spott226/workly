@@ -125,14 +125,11 @@ const getAvailableEmployees = async (businessId, serviceId, startISO) => {
   const closing = DateTime.fromISO(
     `${startMX.toISODate()}T${biz[0].closing_time}`,
     { zone: 'America/Mexico_City' }
-  );
+  ).endOf('minute');
 
-  if (
-  startMX < opening ||
-  endMX.startOf('minute') > closing
-) {
-  return [];
-}
+  if (startMX < opening || endMX > closing) {
+    return [];
+  }
 
   const res = await pool.query(
     `
@@ -163,6 +160,7 @@ const getAvailableEmployees = async (businessId, serviceId, startISO) => {
     name: `${e.first_name} ${e.last_name}`.trim(),
   }));
 };
+
 
 /* ===========================
    Create Appointment

@@ -98,8 +98,44 @@ const setServiceActive = async (businessId, serviceId, isActive) => {
   return res.rows[0];
 };
 
+/**
+ * LISTAR SERVICIOS (PUBLICO POR SLUG)
+ * → solo activos
+ */
+const listPublicServicesBySlug = async (slug) => {
+  if (!slug) return [];
+
+  // 1️⃣ obtener negocio por slug
+  const { rows: biz } = await pool.query(
+    `SELECT id
+     FROM businesses
+     WHERE slug = $1
+       AND active = true`,
+    [slug]
+  );
+
+  if (!biz.length) return [];
+
+  // 2️⃣ obtener servicios activos de ese negocio
+  const { rows } = await pool.query(
+    `SELECT
+       id,
+       name,
+       duration_minutes,
+       price_min
+     FROM services
+     WHERE business_id = $1
+       AND is_active = true
+     ORDER BY name`,
+    [biz[0].id]
+  );
+
+  return rows;
+};
+
 module.exports = {
   createService,
   listServices,
-  setServiceActive
+  setServiceActive,
+  listPublicServicesBySlug
 };

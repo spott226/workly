@@ -127,7 +127,12 @@ const getAvailableEmployees = async (businessId, serviceId, startISO) => {
     { zone: 'America/Mexico_City' }
   );
 
-  if (startMX < opening || endMX > closing) return [];
+  if (
+  startMX < opening ||
+  endMX.startOf('minute') > closing
+) {
+  return [];
+}
 
   const res = await pool.query(
     `

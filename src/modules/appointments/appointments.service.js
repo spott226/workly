@@ -283,6 +283,7 @@ const listAppointments = async (businessId) => {
     SELECT
       a.id,
       a.starts_at,
+      a.employee_id, 
       a.ends_at,
       a.status,
       s.name AS service_name,
